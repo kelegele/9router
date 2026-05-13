@@ -3,8 +3,14 @@ set -e
 
 cd "$(dirname "$0")"
 
-echo ">>> Pulling latest code..."
-git pull
+echo ">>> Ensuring on local branch..."
+git checkout local
+
+echo ">>> Pulling latest main..."
+git fetch origin main
+
+echo ">>> Merging main into local..."
+git merge origin/main --no-edit
 
 echo ">>> Rebuilding image..."
 docker stop 9router 2>/dev/null || true

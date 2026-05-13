@@ -26,14 +26,14 @@ ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV DATA_DIR=/app/data
 
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/open-sse ./open-sse
+COPY --from=builder /app/public ./app/public
+COPY --from=builder /app/.next/static ./app/.next/static
+COPY --from=builder /app/open-sse ./app/open-sse
 # Next file tracing can omit sibling files; MITM runs server.js as a separate process.
-COPY --from=builder /app/src/mitm ./src/mitm
+COPY --from=builder /app/src/mitm ./app/src/mitm
 # Standalone node_modules may omit deps only required by the MITM child process.
-COPY --from=builder /app/node_modules/node-forge ./node_modules/node-forge
+COPY --from=builder /app/node_modules/node-forge ./app/node_modules/node-forge
 
 RUN mkdir -p /app/data && chown -R node:node /app && \
   mkdir -p /app/data-home && chown node:node /app/data-home && \
@@ -47,4 +47,4 @@ RUN apk --no-cache upgrade && apk --no-cache add su-exec && \
 EXPOSE 20128
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["node", "server.js"]
+CMD ["node", "app/server.js"]

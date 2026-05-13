@@ -6,11 +6,11 @@ cd "$(dirname "$0")"
 echo ">>> Ensuring on local branch..."
 git checkout local
 
-echo ">>> Pulling latest main..."
-git fetch origin main
+echo ">>> Pulling latest master..."
+git fetch origin master
 
-echo ">>> Merging main into local..."
-git merge origin/main --no-edit
+echo ">>> Merging master into local..."
+git merge origin/master --no-edit
 
 echo ">>> Rebuilding image..."
 docker stop 9router 2>/dev/null || true

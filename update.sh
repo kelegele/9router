@@ -12,19 +12,19 @@ git fetch origin master
 echo ">>> Merging master into local..."
 git merge origin/master --no-edit
 
-echo ">>> Rebuilding image..."
+echo ">>> Pulling latest image..."
+docker pull decolua/9router:latest
+
+echo ">>> Restarting 9router..."
 docker stop 9router 2>/dev/null || true
 docker rm 9router 2>/dev/null || true
-docker build -t 9router .
-
-echo ">>> Starting 9router..."
 docker run -d \
   --name 9router \
   --restart unless-stopped \
   -p 20128:20128 \
   --env-file .env \
   -v 9router-data:/app/data \
-  9router
+  decolua/9router:latest
 
 sleep 3
 docker ps --filter name=9router --format '{{.Names}}  {{.Status}}  {{.Ports}}'

@@ -34,7 +34,9 @@ COPY --from=builder /app/open-sse ./app/open-sse
 COPY --from=builder /app/src/mitm ./app/src/mitm
 COPY --from=builder /app/src/shared ./app/src/shared
 # Standalone node_modules may omit deps only required by the MITM child process.
-COPY --from=builder /app/node_modules/node-forge ./app/node_modules/node-forge
+COPY --from=builder /app/node_modules/node-forge ./node_modules/node-forge
+# Ensure `next` is available at runtime in case tracing did not include it.
+COPY --from=builder /app/node_modules/next ./node_modules/next
 
 RUN mkdir -p /app/data && chown -R node:node /app && \
   mkdir -p /app/data-home && chown node:node /app/data-home && \

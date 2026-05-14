@@ -90,12 +90,13 @@ appPkg.version = cliPkg.version;
 fs.writeFileSync(appPkgPath, JSON.stringify(appPkg, null, 2) + "\n");
 console.log(`✅ Version synced: ${cliPkg.version}\n`);
 
-// Step 1: Build app with Next.js
+// Step 1: Build app with Next.js (workspace tracing root → traced node_modules in standalone).
 console.log("1️⃣  Building Next.js app...");
 try {
-  execSync("npm run build", { 
+  execSync("npm run build", {
     stdio: "inherit",
-    cwd: appDir 
+    cwd: appDir,
+    env: { ...process.env, NEXT_TRACING_ROOT_MODE: "workspace" }
   });
   console.log("✅ Next.js build completed\n");
 } catch (error) {
@@ -111,8 +112,8 @@ if (fs.existsSync(cliAppDir)) {
 console.log("✅ Cleaned\n");
 
 // Step 3: Copy Next.js standalone build to app/cli/app.
-// With outputFileTracingRoot = workspace root, Next places app files under
-// .next/standalone/app/ and traced node_modules under .next/standalone/node_modules/.
+// With workspace tracing root, Next places app files under .next/standalone/app/ and traced
+// node_modules under .next/standalone/node_modules/ (slim, tracing-pruned).
 console.log("3️⃣  Copying Next.js standalone build to app/cli/app...");
 const standaloneRoot = path.join(appDir, ".next", "standalone");
 const standaloneApp = path.join(standaloneRoot, "app");

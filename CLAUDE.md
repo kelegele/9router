@@ -4,7 +4,7 @@
 
 - 主分支：`master`（远端 `origin/master`）
 - 本地部署分支：`local`，包含本地定制（Dockerfile 修改、update 脚本等）
-- 更新流程：`git fetch origin master` → `git merge origin/master` → rebuild → restart
+- 更新流程：`git fetch origin master` → `git merge origin/master` → `docker pull` → restart
 - **不要**对 `local` 分支执行 `git pull`，它没有追踪远端
 
 ## Docker 镜像

@@ -122,6 +122,7 @@ export function ConfirmModal({
   cancelText = "Cancel",
   variant = "danger",
   loading = false,
+  footerExtra,
 }) {
   return (
     <Modal
@@ -134,6 +135,7 @@ export function ConfirmModal({
           <Button variant="ghost" onClick={onClose} disabled={loading}>
             {cancelText}
           </Button>
+          {footerExtra}
           <Button variant={variant} onClick={onConfirm} loading={loading}>
             {confirmText}
           </Button>

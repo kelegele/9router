@@ -48,6 +48,9 @@ export default function Sidebar({ onClose }) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [shutdownCountdown, setShutdownCountdown] = useState(0);
   const [enableTranslator, setEnableTranslator] = useState(false);
+  const [updateMode, setUpdateMode] = useState(null); // "npm" | "docker"
+  const [dockerPullResult, setDockerPullResult] = useState(null);
+  const [isPullingDocker, setIsPullingDocker] = useState(false);
   const { copied, copy } = useCopyToClipboard(2000);
 
   const INSTALL_CMD = UPDATER_CONFIG.installCmdLatest;
@@ -75,8 +78,9 @@ export default function Sidebar({ onClose }) {
   };
 
   // Open manual update panel (no countdown yet — user must click Copy to trigger shutdown)
-  const handleUpdate = () => {
+  const handleUpdate = (mode = "npm") => {
     setShowUpdateModal(false);
+    setUpdateMode(mode);
     setIsUpdating(true);
   };
 
@@ -100,6 +104,21 @@ export default function Sidebar({ onClose }) {
   const handleCancelUpdate = () => {
     setIsUpdating(false);
     setShutdownCountdown(0);
+    setUpdateMode(null);
+    setDockerPullResult(null);
+  };
+
+  const handleDockerPullUpdate = async () => {
+    setIsPullingDocker(true);
+    setDockerPullResult(null);
+    try {
+      const res = await fetch("/api/version/docker-update", { method: "POST" });
+      const data = await res.json();
+      setDockerPullResult(data);
+    } catch (e) {
+      setDockerPullResult({ success: false, message: "Network error: " + e.message });
+    }
+    setIsPullingDocker(false);
   };
 
   // Note: legacy updater poll removed. New flow: copy install cmd + shutdown server,
@@ -358,12 +377,20 @@ export default function Sidebar({ onClose }) {
       <ConfirmModal
         isOpen={showUpdateModal}
         onClose={() => setShowUpdateModal(false)}
-        onConfirm={handleUpdate}
+        onConfirm={() => handleUpdate("npm")}
         title="Update 9Router"
-        message={`Show install command for v${updateInfo?.latestVersion || ""}? You can copy it and shutdown to install manually.`}
-        confirmText="Show Command"
+        message={`Update to v${updateInfo?.latestVersion || ""}? Choose a method below.`}
+        confirmText="NPM Copy"
         cancelText="Cancel"
         variant="primary"
+        footerExtra={
+          <Button
+            variant="secondary"
+            onClick={() => handleUpdate("docker")}
+          >
+            Docker Pull Update
+          </Button>
+        }
       />
 
       {/* Disconnected / Updating Overlay */}
@@ -378,6 +405,10 @@ export default function Sidebar({ onClose }) {
               onCancel={handleCancelUpdate}
               countdown={shutdownCountdown}
               isDisconnected={isDisconnected}
+              mode={updateMode}
+              dockerPullResult={dockerPullResult}
+              isPullingDocker={isPullingDocker}
+              onDockerPullUpdate={handleDockerPullUpdate}
             />
           ) : (
             <div className="text-center p-8">
@@ -401,18 +432,22 @@ Sidebar.propTypes = {
   onClose: PropTypes.func,
 };
 
-function ManualUpdatePanel({ latestVersion, installCmd, copied, onCopyAndShutdown, onCancel, countdown, isDisconnected }) {
+function ManualUpdatePanel({ latestVersion, installCmd, copied, onCopyAndShutdown, onCancel, countdown, isDisconnected, mode, dockerPullResult, isPullingDocker, onDockerPullUpdate }) {
   const isCountingDown = countdown > 0;
+  const isDocker = mode === "docker";
+
   return (
     <div className="w-full max-w-lg rounded-xl bg-neutral-900/95 border border-white/10 p-6 text-white">
       <div className="flex items-center gap-3 mb-4">
         <div className="flex items-center justify-center size-11 rounded-full bg-amber-500/20 text-amber-400">
-          <span className="material-symbols-outlined text-[24px]">content_copy</span>
+          <span className="material-symbols-outlined text-[24px]">
+            {isDocker ? "deployed_code" : "content_copy"}
+          </span>
         </div>
         <div>
           <h2 className="text-lg font-semibold">Update 9Router{latestVersion ? ` to v${latestVersion}` : ""}</h2>
           <p className="text-xs text-white/60">
-            {isDisconnected
+            {isDocker ? "Docker pull the latest image and restart the container." : isDisconnected
               ? "Server stopped. Paste the command into a terminal to install."
               : isCountingDown
                 ? `Command copied. Server will stop in ${countdown}s...`
@@ -421,30 +456,77 @@ function ManualUpdatePanel({ latestVersion, installCmd, copied, onCopyAndShutdow
         </div>
       </div>
 
-      <p className="text-sm text-white/80 mb-2">Install command:</p>
-      <div className="w-full px-3 py-2 rounded bg-white/5 mb-4">
-        <code className="text-xs font-mono text-amber-400 break-all">{installCmd}</code>
-      </div>
+      {isDocker ? (
+        <>
+          <p className="text-sm text-white/80 mb-2">Docker update command:</p>
+          <div className="w-full px-3 py-2 rounded bg-white/5 mb-4">
+            <code className="text-xs font-mono text-amber-400 break-all">docker pull decolua/9router:latest && docker stop 9router && docker rm 9router && docker run -d --name 9router --restart unless-stopped -p 20128:20128 --env-file .env -v 9router-data:/app/data decolua/9router:latest</code>
+          </div>
 
-      <ol className="text-xs text-white/70 space-y-1 list-decimal list-inside mb-4">
-        <li>Click <strong>Copy & Shutdown</strong> below.</li>
-        <li>Paste the command into your terminal and press Enter.</li>
-        <li>Run <code className="px-1 rounded bg-white/10 text-green-400">9router</code> again after install.</li>
-      </ol>
+          {dockerPullResult && (
+            <div className={`w-full px-3 py-2 rounded mb-4 text-xs ${dockerPullResult.success ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
+              <p className="font-semibold mb-1">{dockerPullResult.success ? "Pull succeeded" : "Pull failed"}</p>
+              <p>{dockerPullResult.message}</p>
+              {dockerPullResult.output && <pre className="mt-1 text-[10px] opacity-70 whitespace-pre-wrap">{dockerPullResult.output}</pre>}
+            </div>
+          )}
 
-      {isDisconnected ? (
-        <Button variant="secondary" fullWidth onClick={() => globalThis.location.reload()}>
-          Reload Page
-        </Button>
+          <ol className="text-xs text-white/70 space-y-1 list-decimal list-inside mb-4">
+            <li>Click <strong>Docker Pull Update</strong> below to pull the latest image.</li>
+            <li>After the pull completes, click <strong>Restart Now</strong> to restart the container.</li>
+            <li>Page will reload automatically when the server is back up.</li>
+          </ol>
+
+          {isDisconnected ? (
+            <Button variant="secondary" fullWidth onClick={() => globalThis.location.reload()}>
+              Reload Page
+            </Button>
+          ) : dockerPullResult?.success ? (
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={onCancel}>Cancel</Button>
+              <Button variant="primary" fullWidth onClick={onCopyAndShutdown}>
+                Restart Now
+              </Button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={onCancel} disabled={isPullingDocker}>
+                Cancel
+              </Button>
+              <Button variant="primary" fullWidth onClick={onDockerPullUpdate} loading={isPullingDocker}>
+                {isPullingDocker ? "Pulling..." : "Docker Pull Update"}
+              </Button>
+            </div>
+          )}
+        </>
       ) : (
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={onCancel} disabled={isCountingDown}>
-            Cancel
-          </Button>
-          <Button variant="primary" fullWidth onClick={onCopyAndShutdown} disabled={isCountingDown}>
-            {copied ? "✓ Copied — shutting down..." : isCountingDown ? `Shutting down in ${countdown}s` : "Copy & Shutdown"}
-          </Button>
-        </div>
+        <>
+          <p className="text-sm text-white/80 mb-2">Install command:</p>
+          <div className="w-full px-3 py-2 rounded bg-white/5 mb-4">
+            <code className="text-xs font-mono text-amber-400 break-all">{installCmd}</code>
+          </div>
+
+          <ol className="text-xs text-white/70 space-y-1 list-decimal list-inside mb-4">
+            <li>Click <strong>Copy & Shutdown</strong> below.</li>
+            <li>Paste the command into your terminal and press Enter.</li>
+            <li>Run <code className="px-1 rounded bg-white/10 text-green-400">9router</code> again after install.</li>
+          </ol>
+
+          {isDisconnected ? (
+            <Button variant="secondary" fullWidth onClick={() => globalThis.location.reload()}>
+              Reload Page
+            </Button>
+          ) : (
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={onCancel} disabled={isCountingDown}>
+                Cancel
+              </Button>
+              <Button variant="primary" fullWidth onClick={onCopyAndShutdown} disabled={isCountingDown}>
+                {copied ? "✓ Copied — shutting down..." : isCountingDown ? `Shutting down in ${countdown}s` : "Copy & Shutdown"}
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -458,4 +540,8 @@ ManualUpdatePanel.propTypes = {
   onCancel: PropTypes.func.isRequired,
   countdown: PropTypes.number,
   isDisconnected: PropTypes.bool,
+  mode: PropTypes.string,
+  dockerPullResult: PropTypes.object,
+  isPullingDocker: PropTypes.bool,
+  onDockerPullUpdate: PropTypes.func,
 };

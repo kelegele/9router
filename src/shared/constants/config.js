@@ -29,6 +29,7 @@ export const UPDATER_CONFIG = {
   waitForExitMaxMs: 20000,
   waitForExitCheckMs: 500,
   appPort: 20128,
+  dockerUpdateCmd: "docker pull decolua/9router:master && docker stop 9router && docker rm 9router && docker run -d --name 9router --restart unless-stopped -p 20128:20128 --env-file ./env -v 9router-data:/app/data decolua/9router:master",
 };
 
 // Theme configuration

@@ -1,17 +1,6 @@
 #!/bin/bash
 set -e
 
-cd "$(dirname "$0")"
-
-echo ">>> Ensuring on local branch..."
-git checkout local
-
-echo ">>> Pulling latest master..."
-git fetch my master
-
-echo ">>> Merging master into local..."
-git merge my/master --no-edit
-
 echo ">>> Pulling latest image..."
 docker pull decolua/9router:latest
 

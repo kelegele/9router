@@ -7,10 +7,10 @@ echo ">>> Ensuring on local branch..."
 git checkout local
 
 echo ">>> Pulling latest master..."
-git fetch origin master
+git fetch my master
 
 echo ">>> Merging master into local..."
-git merge origin/master --no-edit
+git merge my/master --no-edit
 
 echo ">>> Pulling latest image..."
 docker pull decolua/9router:latest

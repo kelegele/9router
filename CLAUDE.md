@@ -2,10 +2,10 @@
 
 ## 分支策略
 
-- 主分支：`master`（远端 `origin/master`）
-- 本地部署分支：`local`，包含本地定制（Dockerfile 修改、update 脚本等）
-- 更新流程：`git fetch origin master` → `git merge origin/master` → `docker pull` → restart
-- **不要**对 `local` 分支执行 `git pull`，它没有追踪远端
+- 上游仓库：`decolua/9router`，Fork 到 `kelegele/9router`（remote: `my`）
+- 本地部署分支：`local`，包含本地定制（update 脚本等）
+- 更新流程：`git fetch my master` → `git merge my/master` → `docker pull decolua/9router:latest` → restart
+- Docker 镜像仍用官方预构建 `decolua/9router:latest`，不自己编译
 
 ## Docker 镜像
 
